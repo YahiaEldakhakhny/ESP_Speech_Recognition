@@ -1,4 +1,3 @@
-clear all
 
 parent_path = 'D:\year_3_fall_2022\Embedded\Projects\ESP_Speech_Recognition\sample_audio\';
 % Read signals
@@ -43,6 +42,14 @@ S2_fft_mag = abs(S2_fft);
 S3_fft_mag = abs(S3_fft);
 S4_fft_mag = abs(S4_fft);
 
-Signals_arr_abs = [S1_fft_mag S2_fft_mag S3_fft_mag S1_fft_mag];
+% 3xn     *     nx1 = 3x1 
+% A        *       X  = B
+signals_matrix = [S1_fft_mag; S2_fft_mag; S3_fft_mag];
+b = ones(3,1);
 
-for k = 1:length(Signals_arr_abs)-1
+the_chosen_one = find_optimal_vector(signals_matrix, b)
+
+
+
+
+
