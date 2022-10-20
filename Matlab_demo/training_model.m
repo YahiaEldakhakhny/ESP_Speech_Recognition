@@ -1,3 +1,4 @@
+%% MAIN CODE
 % Define folder that contains audio samples
 parent_path = 'D:\year_3_fall_2022\Embedded\Projects\ESP_Speech_Recognition\sample_audio\Rubik_cube';
 
@@ -27,16 +28,37 @@ end
 % Get the signals in freq domain and calculate magnitude in freq domain
 signalsFreqComplex = [];
 signalsFreqMagnitude = [];% Store magnitude of the signal in freq domain
+signalsVectorMag=[];% Store the magnitude of the signal vector: sqrt(sum(x_i^2))
 for d = 1:signalsNum
     currSignalTime = signalsTime(d,:);
     currSignalFreq = fft(currSignalTime);
     signalsFreqComplex = addRow(signalsFreqComplex, currSignalFreq);
     signalsFreqMagnitude = addRow(signalsFreqMagnitude, abs(currSignalFreq));
+    signalsVectorMag = addRow(signalsVectorMag, sqrt(sum(signalsFreqMagnitude(d, :).^2)));
+end
+
+% Get dot products of the signals to determine wich is the best signal
+dotProducts =[]; % Matrix to store dot products between all vectors
+for r1 = 1:signalsNum
+    % Main vector where the dot product = dot(currVector1, V_r2)
+    currVector1 = signalsFreqMagnitude(r1, :)./signalsVectorMag(r1);
+    dotProductRow = [];% current row of the dotProducts Matrix
+    for r2 = 1:signalsNum
+       if r2 == r1
+           % No need to get dot product between a signal and itself
+           continue
+       else
+           currVector2 = signalsFreqMagnitude(r2, :)./signalsVectorMag(r1);
+           dotProductRow = [dotProductRow dot(currVector1,currVector2)];
+           
+       end
+    end
+    dotProducts = addRow(dotProducts, dotProductRow);
 end
 
 
-%% TEST
-
+%% WRITE TESTS HERE
+dotProducts
 
 
 
