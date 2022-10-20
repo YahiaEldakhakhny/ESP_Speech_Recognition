@@ -56,9 +56,26 @@ for r1 = 1:signalsNum
     dotProducts = addRow(dotProducts, dotProductRow);
 end
 
+% Find lowest tolerance acceptable and the optimal signal
+optimalSignalIndex = 1;
+minAcceptDotProduct = dotProducts(1,1);
+for b = 1:signalsNum
+    optimalDotProductSum = sum(dotProducts(optimalSignalIndex,:));
+    % If condition to find the signal with the highest dot products
+    if sum(dotProducts(b,:)) > optimalDotProductSum
+        optimalSignalIndex = b;
+    end
+    % If condition to find minimum acceptable dot product (tolerance)
+    if min(dotProducts(b,:)) < minAcceptDotProduct
+       minAcceptDotProduct =  min(dotProducts(b,:));
+    end
+end
+
 
 %% WRITE TESTS HERE
-dotProducts
+optimalSignalIndex
+minAcceptDotProduct
+%dotProducts
 
 
 
