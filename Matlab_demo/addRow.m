@@ -25,10 +25,10 @@ function outputMatrix = addRow(inputMatrix, row)
     else
         outputMatrix = [inputMatrix; row];
     
-    % END OF FUNCTION
+    % END OF IF
     end
     
     
     
-    
+% END OF FUNCTION
 end

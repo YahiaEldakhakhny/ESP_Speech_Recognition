@@ -21,8 +21,27 @@ for k = 1:signalsNum
    [currSignal, currFs] = audioread(fullFileName);
    
    Fs(k) = currFs;
-   signalsTime
+   signalsTime = addRow(signalsTime, currSignal');
 end
+
+% Get the signals in freq domain and calculate magnitude in freq domain
+signalsFreqComplex = [];
+signalsFreqMagnitude = [];% Store magnitude of the signal in freq domain
+for d = 1:signalsNum
+    currSignalTime = signalsTime(d,:);
+    currSignalFreq = fft(currSignalTime);
+    signalsFreqComplex = addRow(signalsFreqComplex, currSignalFreq);
+    signalsFreqMagnitude = addRow(signalsFreqMagnitude, abs(currSignalFreq));
+end
+
+
+%% TEST
+%[z, n] = size(signalsFreqMagnitude);
+for f = 1:z
+    figure; plot(1:n, signalsFreqMagnitude(1, :)); grid on
+end
+
+
 
 
 
