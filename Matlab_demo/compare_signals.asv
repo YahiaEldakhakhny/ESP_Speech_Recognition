@@ -7,12 +7,12 @@ fileRegex_train = 'Cube*.m4a';
 
 % Apply parameters to different signals to see if the model recognises
 % signals
-parent_path_trial = 'D:\year_3_fall_2022\Embedded\Projects\Testing_audio\';
-%fileRegex_trial = '*';
-fileName ='Cube3.m4a';
+parent_path_trial = 'D:\year_3_fall_2022\Embedded\Projects\Testing_audio';
+fileRegex_trial = '*';
+
 
 % The current iteration reads currSignal and its sampling freq
-[currSignal, currFs] = audioread(strcat(parent_path_trial, fileName));
+[currSignal, currFs] = audioread(fullFileName);
     
 % Make sure that the signal is a column vector
 [currRows, currColumns] = size(currSignal);
@@ -22,12 +22,10 @@ if (currRows == 2) || (currColumns == 2)
 elseif currRows == 1
     currSignal = currSignal';
 end
-
-currSignalFreqMag = abs(fft(currSignal));
     
 % Compute dot product between currSignal and nominal signal (optimalSignalFreqMag)
-dotProduct = myDotProduct(currSignalFreqMag', optimalSignalFreqMag);
-disp(fileName);
+dotProduct = myDotProduct(currSignal, optimalSignalFreqMag);
+disp(baseFileName);
 if dotProduct <= tolerance
     disp("yup");
        
