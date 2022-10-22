@@ -9,7 +9,7 @@ fileRegex_train = 'Cube*.m4a';
 % signals
 parent_path_trial = 'D:\year_3_fall_2022\Embedded\Projects\Testing_audio\';
 %fileRegex_trial = '*';
-fileName ='Cube3.m4a';
+fileName ='Cube2.m4a';
 
 % The current iteration reads currSignal and its sampling freq
 [currSignal, currFs] = audioread(strcat(parent_path_trial, fileName));
@@ -24,17 +24,18 @@ elseif currRows == 1
 end
 
 currSignalFreqMag = abs(fft(currSignal));
-    
-% Compute dot product between currSignal and nominal signal (optimalSignalFreqMag)
-dotProduct = myDotProduct(currSignalFreqMag', optimalSignalFreqMag);
-disp(fileName);
-if dotProduct <= tolerance
-    disp("yup");
-       
-else
-    disp("Nah");
-end
 
+% Cut vectors in half to reduce needed operatios
+optimalSignalFreqMag = optimalSignalFreqMag(1:floor(length(optimalSignalFreqMag)/2));
+currSignalFreqMag = currSignalFreqMag(1:floor(length(currSignalFreqMag)/2));
+
+
+% Get magnitude of vectors before dot product to make them unit vectors
+currVectorMagnitude = sqrt(sum(currSignalFreqMag.^2));
+optimalVectorMagnitude = sqrt(sum(optimalSignalFreqMag.^2));
+
+% Get dot product
+dotProduct = myDotProduct((currSignalFreqMag./currVectorMagnitude)', (currSignalFreqMag./optimalVectorMagnitude));
 
 
 
