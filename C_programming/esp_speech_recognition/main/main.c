@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include "esp-dsp/modules/fft/include/dsps_fft2r.h"
 // includes for delay
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,6 +27,7 @@
 
 typedef short signed int Sample;
 typedef Sample* Signal;
+// Signal my_signal = malloc(Signal_size*sizeof(samle));
 
 // Global Array to store all signals
 Signal all_signals[NUMBER_OF_SIGNALS];
