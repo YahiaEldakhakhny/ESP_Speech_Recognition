@@ -18,10 +18,11 @@
 
 typedef double Sample;
 typedef double* RI_Vector;// Real or Imaginary vector
-typedef RI_Vector* Signal;// A signal consists of 2 RI_Signal (one real and the other imaginary)
+typedef RI_Vector* Signal;// A signal consists of 2 RI_Vector (one real and the other imaginary)
 
-// Array to store all signals
-Signal all_signals[NUMBER_OF_SIGNALS];
+// Array to store optimal signals and their corresponding tolerances
+Signal optimal_signals[NUMBER_OF_SIGNALS];
+double tolerances[NUMBER_OF_SIGNALS] = {0};
 
 // Create fft object from fft library
 arduinoFFT FFT = arduinoFFT();
@@ -39,7 +40,7 @@ void setup()
     
   // Allocate memory space for all signals
   for(int i=0; i < NUMBER_OF_SIGNALS; i++){
-    signal_setup(all_signals[i]);
+    signal_setup(optimal_signals[i]);
   }
   // Serial monitor setup
   Serial.begin(115200);
@@ -47,28 +48,29 @@ void setup()
 }
 
 
- 
+// Note that the logic of most pins is acive low 
 void loop()
 {
   // TODO: Write the main logic of loop
   // if the user wants to be in the Recognition mode
-  while(digitalRead(PIN_MODE_RECOGNIZE)){
-    if(digitalRead(PIN_LISTEN)){
-      
+  while(!digitalRead(PIN_MODE_RECOGNIZE)){
+    if(!digitalRead(PIN_LISTEN)){
+      recognise();
     }
   }
       
 }
 
-// Function used for testing it serves no actual purpose
-double get_max_value(double vector[]){
+// Function used to find the index of the largest element in an array of doubles
+int get_max_index(double vector[], int length){
   double max = vector[0];
-  for(int i=1; i< SIGNAL_LENGTH; i++){
+  int max_index = 0;
+  for(int i=1; i< length; i++){
     if(vector[i] > max){
-      max = vector[i];
+      max_index = i;
     }
   } 
-  return max;
+  return max_index;
 }
 
 void compute_fft(Signal s){
@@ -93,7 +95,7 @@ void signal_setup(Signal s){
 // Function that reads analog values and stores them in a signal
 void listen(Signal s){
   int i = 0;
-  while(digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
+  while(!digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
     // analogRead returns a uint16_t so we need to cast it to sample
     Sample currSample = (Sample) analogRead(PIN_MIC);
     s[REAL][i] = currSample;
@@ -101,6 +103,66 @@ void listen(Signal s){
     delay(1);
   }
 }
+
+// FUNCTION TO BE RUN WHEN ESP ENTERS  RECOGNISION MODE
+void recognise(){
+  Signal currSignal;
+  double diviations[NUMBER_OF_SIGNALS] = {0};// DIVIATIONS BETWEEN CURRENT SIGNAL AND EACH OF THE OPTIMAL SIGNALS
+  // allocate space for the current signal
+  signal_setup(currSignal);
+  //listen to samples and store them in the current signal
+  listen(currSignal);
+  compute_fft(currSignal);
+  // The magnitude spectrum of the fft is stored in the real part of the signal so we are only interested in the real vector
+  normalise(currSignal[REAL]);
+
+  for(int i = 0; i < NUMBER_OF_SIGNALS; i++){
+  double dot_prod = dot_product(currSignal[REAL], optimal_signals[i][REAL]);
+    if(dot_prod >= tolerances[i]){
+      diviations[i] = dot_prod;
+    }
+  }
+
+  // the final word is the index of the optimal signal that most resembles the current signal
+  int final_word = get_max_index(diviations, NUMBER_OF_SIGNALS);
+  if(diviations[final_word] == 0){
+    Serial.print(-1);
+  }
+  else{
+    Serial.print(final_word);
+  }
+  
+
+  free(currSignal);
+}
+
+/* if a vector v = <v0, v1, v2, ...>
+its magnitude = sqrt(v0^2 + v1^2 + v2^2 + ....)
+*/
+double get_vector_magnitude(RI_Vector v){
+  double sqr_sum = 0;
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    sqr_sum += v[i] * v[i];
+  }
+  return sqrt(sqr_sum);
+}
+
+// normalises a vector (divides it by its magnitude)
+void normalise(RI_Vector v){
+  double mag = get_vector_magnitude(v);
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    v[i] /= mag;
+  }
+}
+
+double dot_product(RI_Vector v1, RI_Vector v2){
+  double result = 0;
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    result += v1[i] * v2[i];
+  }
+}
+
+
 
 
 
