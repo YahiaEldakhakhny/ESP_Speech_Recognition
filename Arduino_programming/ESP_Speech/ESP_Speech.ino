@@ -6,6 +6,7 @@
 // Defines related to the signals
 #define SIGNAL_LENGTH 8192 // Must be a power of 2 so I chose 2^13
 #define NUMBER_OF_SIGNALS 6
+#define NUMBER_OF_TRAINING_SIGNALS 5
 // Indicies to get real and imaginary components of a signal
 #define REAL 0
 #define IMAG 1
@@ -15,6 +16,9 @@
 #define PIN_MODE_RECOGNIZE 11
 #define PIN_LISTEN 12 // pin used to tell esp to start listening
 #define PIN_MIC 34 // pin connected to mic, used to read analog values
+#define PIN_TRAIN_WORD1 1
+#define PIN_TRAIN_WORD2 2
+#define PIN_TRAIN_WORD3 3
 
 typedef double Sample;
 typedef double* RI_Vector;// Real or Imaginary vector
@@ -29,12 +33,15 @@ arduinoFFT FFT = arduinoFFT();
 
 
  
-void setup()
-{
+void setup(){
   // Setup for digital pins
   pinMode(PIN_MODE_TRAIN, INPUT);
   pinMode(PIN_MODE_RECOGNIZE, INPUT);
   pinMode(PIN_LISTEN, INPUT);
+  pinMode(PIN_TRAIN_WORD1, INPUT);
+  pinMode(PIN_TRAIN_WORD2, INPUT);
+  pinMode(PIN_TRAIN_WORD3, INPUT);
+
   // Setup for analog pin
   pinMode(PIN_MIC, INPUT);
     
@@ -49,8 +56,7 @@ void setup()
 
 
 // Note that the logic of most pins is acive low 
-void loop()
-{
+void loop(){
   // TODO: Write the main logic of loop
   // if the user wants to be in the Recognition mode
   while(!digitalRead(PIN_MODE_RECOGNIZE)){
@@ -58,7 +64,13 @@ void loop()
       recognise();
     }
   }
-      
+
+  // if the user wants to be in the training mode
+  while(!digitalRead(PIN_MODE_TRAIN)){
+    if(!digitalRead(PIN_LISTEN)){
+      train();
+    }
+  }      
 }
 
 // Function used to find the index of the largest element in an array of doubles
@@ -104,6 +116,34 @@ void listen(Signal s){
   }
 }
 
+
+/* if a vector v = <v0, v1, v2, ...>
+its magnitude = sqrt(v0^2 + v1^2 + v2^2 + ....)
+*/
+double get_vector_magnitude(RI_Vector v){
+  double sqr_sum = 0;
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    sqr_sum += v[i] * v[i];
+  }
+  return sqrt(sqr_sum);
+}
+
+// normalises a vector (divides it by its magnitude)
+void normalise(RI_Vector v){
+  double mag = get_vector_magnitude(v);
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    v[i] /= mag;
+  }
+}
+
+double dot_product(RI_Vector v1, RI_Vector v2){
+  double result = 0;
+  for(int i = 0; i < SIGNAL_LENGTH; i++){
+    result += v1[i] * v2[i];
+  }
+}
+
+
 // FUNCTION TO BE RUN WHEN ESP ENTERS  RECOGNISION MODE
 void recognise(){
   Signal currSignal;
@@ -136,30 +176,51 @@ void recognise(){
   free(currSignal);
 }
 
-/* if a vector v = <v0, v1, v2, ...>
-its magnitude = sqrt(v0^2 + v1^2 + v2^2 + ....)
-*/
-double get_vector_magnitude(RI_Vector v){
-  double sqr_sum = 0;
-  for(int i = 0; i < SIGNAL_LENGTH; i++){
-    sqr_sum += v[i] * v[i];
-  }
-  return sqrt(sqr_sum);
+int readTrainingPins(){
+  int b1 = digitalRead(PIN_TRAIN_WORD1);
+  int b2 = digitalRead(PIN_TRAIN_WORD2);
+  int b3 = digitalRead(PIN_TRAIN_WORD3);
+  return (b1 + (b2 << 1) + (b3 << 2));
 }
 
-// normalises a vector (divides it by its magnitude)
-void normalise(RI_Vector v){
-  double mag = get_vector_magnitude(v);
-  for(int i = 0; i < SIGNAL_LENGTH; i++){
-    v[i] /= mag;
+void train(){
+  int currTrainingWord = readTrainingPins();
+  int training_index = 0;
+  Signal training_signals[NUMBER_OF_TRAINING_SIGNALS];
+  Signal optimalSignal = optimal_signals[currTrainingWord];
+  for(int i = 0; i < NUMBER_OF_TRAINING_SIGNALS; i++){
+    signal_setup(training_signals[i]);
   }
-}
+  while(!digitalRead(PIN_MODE_TRAIN) && training_index < NUMBER_OF_TRAINING_SIGNALS){
+    if(!digitalRead(PIN_LISTEN)){
+      listen(training_signals[training_index]);
+      training_index++;
+    }
+  }
 
-double dot_product(RI_Vector v1, RI_Vector v2){
-  double result = 0;
+  // calculate fft for all training signals and normalise them
+  for(int i = 0; i < training_index; i++){
+    compute_fft(training_signals[i]);
+    normalise(training_signals[i][REAL]);
+  }  
+  // Calculate average of all training signals
+  // TODO: correct this logic
   for(int i = 0; i < SIGNAL_LENGTH; i++){
-    result += v1[i] * v2[i];
+    for(int j = 0; j < training_index; j++){
+      optimalSignal[REAL][i] += (training_signals[REAL][j])/training_index;
+    }
   }
+
+  normalise(optimalSignal[REAL]);
+  //Compare the optimal signal with all training signals
+  double min_dot_product, curr_dot_product;
+  for(int i =0; i < training_index; i++){
+    curr_dot_product = dot_product(optimalSignal[REAL], training_signals[i][REAL]);    
+    if(i == 0 || curr_dot_product < min_dot_product){
+      min_dot_product = curr_dot_product;
+    }
+  }
+  tolerances[currTrainingWord] = min_dot_product;
 }
 
 
