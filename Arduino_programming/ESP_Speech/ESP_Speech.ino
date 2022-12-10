@@ -144,6 +144,13 @@ double dot_product(RI_Vector v1, RI_Vector v2){
 }
 
 
+int readTrainingPins(){
+  int b1 = digitalRead(PIN_TRAIN_WORD1);
+  int b2 = digitalRead(PIN_TRAIN_WORD2);
+  int b3 = digitalRead(PIN_TRAIN_WORD3);
+  return (b1 + (b2 << 1) + (b3 << 2));
+}
+
 // FUNCTION TO BE RUN WHEN ESP ENTERS  RECOGNISION MODE
 void recognise(){
   Signal currSignal;
@@ -176,13 +183,6 @@ void recognise(){
   free(currSignal);
 }
 
-int readTrainingPins(){
-  int b1 = digitalRead(PIN_TRAIN_WORD1);
-  int b2 = digitalRead(PIN_TRAIN_WORD2);
-  int b3 = digitalRead(PIN_TRAIN_WORD3);
-  return (b1 + (b2 << 1) + (b3 << 2));
-}
-
 void train(){
   int currTrainingWord = readTrainingPins();
   int training_index = 0;
@@ -207,7 +207,7 @@ void train(){
   // TODO: correct this logic
   for(int i = 0; i < SIGNAL_LENGTH; i++){
     for(int j = 0; j < training_index; j++){
-      optimalSignal[REAL][i] += (training_signals[REAL][j])/training_index;
+      optimalSignal[REAL][i] += (training_signals[j][REAL])[i]/training_index;
     }
   }
 
