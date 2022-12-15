@@ -12,13 +12,13 @@
 #define IMAG 1
 // Defines of Pins
 // TODO: change pins to be suitable for hardware connections
-#define PIN_MODE_TRAIN 10
-#define PIN_MODE_RECOGNIZE 11
-#define PIN_LISTEN 12 // pin used to tell esp to start listening
+#define PIN_MODE_TRAIN 12
+#define PIN_MODE_RECOGNIZE 14
+#define PIN_LISTEN 25 // pin used to tell esp to start listening
 #define PIN_MIC 34 // pin connected to mic, used to read analog values
-#define PIN_TRAIN_WORD1 1
-#define PIN_TRAIN_WORD2 2
-#define PIN_TRAIN_WORD3 3
+#define PIN_TRAIN_WORD1 19
+#define PIN_TRAIN_WORD2 18
+#define PIN_TRAIN_WORD3 5
 
 typedef double Sample;
 typedef double* RI_Vector;// Real or Imaginary vector
@@ -42,6 +42,10 @@ void setup(){
   pinMode(PIN_TRAIN_WORD2, INPUT);
   pinMode(PIN_TRAIN_WORD3, INPUT);
 
+  // Set interrupts for changing the mode 
+  attachInterrupt(PIN_MODE_TRAIN, training_mode, FALLING);
+  attachInterrupt(PIN_MODE_TRAIN, recognision_mode, FALLING);
+  
   // Setup for analog pin
   pinMode(PIN_MIC, INPUT);
     
@@ -57,20 +61,32 @@ void setup(){
 
 // Note that the logic of most pins is acive low 
 void loop(){
-  // TODO: Write the main logic of loop
-  // if the user wants to be in the Recognition mode
-  while(!digitalRead(PIN_MODE_RECOGNIZE)){
+           
+}
+
+void recognision_mode(){
+    while(!digitalRead(PIN_MODE_RECOGNIZE)){
+    Serial.println("Recognition Mode");
     if(!digitalRead(PIN_LISTEN)){
       recognise();
     }
+    else{
+      continue;
+    }
   }
+}
 
-  // if the user wants to be in the training mode
+void training_mode(){
   while(!digitalRead(PIN_MODE_TRAIN)){
+    Serial.println("Training Mode");
     if(!digitalRead(PIN_LISTEN)){
+      Serial.println("Training....");
       train();
     }
-  }      
+    else{
+      continue;
+    }
+  }
 }
 
 // Function used to find the index of the largest element in an array of doubles
@@ -107,12 +123,17 @@ void signal_setup(Signal s){
 // Function that reads analog values and stores them in a signal
 void listen(Signal s){
   int i = 0;
+  // wait for the user to speak
+  while(digitalRead(PIN_LISTEN) ){Serial.println("waitng for input....");}
+  Serial.println("Listening....");
+  delay(100);
+  // when the user speaks
   while(!digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
     // analogRead returns a uint16_t so we need to cast it to sample
     Sample currSample = (Sample) analogRead(PIN_MIC);
     s[REAL][i] = currSample;
     i++;
-    delay(1);
+    delayMicroseconds(120);
   }
 }
 
@@ -145,11 +166,14 @@ double dot_product(RI_Vector v1, RI_Vector v2){
 
 
 int readTrainingPins(){
-  int b1 = digitalRead(PIN_TRAIN_WORD1);
-  int b2 = digitalRead(PIN_TRAIN_WORD2);
-  int b3 = digitalRead(PIN_TRAIN_WORD3);
+  int b1 = !digitalRead(PIN_TRAIN_WORD1);
+  int b2 = !digitalRead(PIN_TRAIN_WORD2);
+  int b3 = !digitalRead(PIN_TRAIN_WORD3);
   return (b1 + (b2 << 1) + (b3 << 2));
 }
+
+
+
 
 // FUNCTION TO BE RUN WHEN ESP ENTERS  RECOGNISION MODE
 void recognise(){
@@ -159,6 +183,7 @@ void recognise(){
   signal_setup(currSignal);
   //listen to samples and store them in the current signal
   listen(currSignal);
+  Serial.println("Processing....");
   compute_fft(currSignal);
   // The magnitude spectrum of the fft is stored in the real part of the signal so we are only interested in the real vector
   normalise(currSignal[REAL]);
@@ -173,10 +198,10 @@ void recognise(){
   // the final word is the index of the optimal signal that most resembles the current signal
   int final_word = get_max_index(diviations, NUMBER_OF_SIGNALS);
   if(diviations[final_word] == 0){
-    Serial.print(-1);
+    Serial.println(-1);
   }
   else{
-    Serial.print(final_word);
+    Serial.println(final_word);
   }
   
 
@@ -185,6 +210,7 @@ void recognise(){
 
 void train(){
   int currTrainingWord = readTrainingPins();
+  
   int training_index = 0;
   Signal training_signals[NUMBER_OF_TRAINING_SIGNALS];
   Signal optimalSignal = optimal_signals[currTrainingWord];
