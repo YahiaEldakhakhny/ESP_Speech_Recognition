@@ -27,7 +27,7 @@
 
 
 // Array to store optimal signals and their corresponding tolerances
-double reference_signal[SIGNAL_LENGTH] = {1};
+double reference_signal[SIGNAL_LENGTH] = {1/SIGNAL_LENGTH};
 
 // training constant
 // const double learning_rate = 0.9;
@@ -46,14 +46,11 @@ void setup(){
   pinMode(PIN_MODE_TRAIN, INPUT);
   pinMode(PIN_MODE_RECOGNIZE, INPUT);
   pinMode(PIN_LISTEN, INPUT);
-  pinMode(PIN_TRAIN_WORD1, INPUT);
-  pinMode(PIN_TRAIN_WORD2, INPUT);
-  pinMode(PIN_TRAIN_WORD3, INPUT);
+  pinMode(PIN_TRUTH, INPUT);
+  pinMode(26, OUTPUT);
 
-  // Set interrupts for changing the mode 
-  // attachInterrupt(PIN_MODE_TRAIN, training_mode, FALLING);
-  // attachInterrupt(PIN_MODE_RECOGNIZE, recognision_mode, FALLING);
-  
+
+ 
   // Setup for analog pin
   pinMode(PIN_MIC, INPUT);
     
@@ -65,15 +62,46 @@ void setup(){
 
 // Note that the logic of most pins is acive low 
 void loop(){
+  if(!digitalRead(PIN_MODE_RECOGNIZE)){  
   while(!digitalRead(PIN_MODE_RECOGNIZE)){
-    recognision_mode();
+  int i = 0;
+
+  Serial.println("recognision mode....");
+  // wait for the user to speak
+  // while(digitalRead(PIN_LISTEN) ){Serial.println("waitng for input...."); delay(1000);}
+  if(!digitalRead(PIN_LISTEN)){
+    double curr_signal[SIGNAL_LENGTH] = {0};
+
+    Serial.println("Listening....");
+    delay(100);
+    // when the user speaks
+    listen(curr_signal);
+    Serial.println("*****End of listen****");
+
+    delay(1000);
+    compute_fft(curr_signal);
+    bool res = recognise(curr_signal);
+    if(res){
+      Serial.println("Match");
+    } else{
+      Serial.println("No Match");
+    }
+    free(curr_signal);    
+    delay(2000);
+  }  
+  }
   }
 
-
+if(!digitalRead(PIN_MODE_TRAIN)){
   while(!digitalRead(PIN_MODE_TRAIN)){
-    training_mode();
+    // training_mode();
+    // delay(100);
+    digitalWrite(26, 1);    
+    delay(5000);    
+    digitalWrite(26, 0);    
+    delay(5000);   
   }
-    
+   } 
   
            
 }
@@ -90,15 +118,8 @@ void recognision_mode(){
     Serial.println("Listening....");
     delay(100);
     // when the user speaks
-    while(!digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
-      // analogRead returns a uint16_t so we need to cast it to sample
-      double sample = (double) analogRead(PIN_MIC);
-      curr_signal[i] =  sample;
-      Serial.println("Listening....");
-      i++;
-      delayMicroseconds(100);
-    }
-    Serial.println("*****End of lisen****");
+    listen(curr_signal);
+    Serial.println("*****End of listen****");
 
     delay(1000);
     compute_fft(curr_signal);
@@ -143,26 +164,10 @@ void training_mode(){
 
 }
 
-// void prinSig(double s[]){
-//   for(int j = 0; j < SIGNAL_LENGTH; j++){
-//     Serial.println(s[j]);
 
-//     delay(200);
-//   }
-// }
   
 
-// Function used to find the index of the largest element in an array of doubles
-// int get_max_index(double vector[], int length){
-//   double max = vector[0];
-//   int max_index = 0;
-//   for(int i=1; i< length; i++){
-//     if(vector[i] > max){
-//       max_index = i;
-//     }
-//   } 
-//   return max_index;
-// }
+
 
 void compute_fft(double s[]){
   double imag[SIGNAL_LENGTH] = {0};
@@ -172,41 +177,26 @@ void compute_fft(double s[]){
   FFT.ComplexToMagnitude(s, imag, SIGNAL_LENGTH); /* Compute magnitudes */
 }
 
-// void compute_dct(double s[]){
-//   double imag[2*SIGNAL_LENGTH] = {0};
-//   double ext_real[2*SIGNAL_LENGTH] = {0};
-//   // copy s into the extended signal
-//   for(int k = 0; k < SIGNAL_LENGTH; k++){
-//     ext_real[k] = s[k];
-//   }   
-
-//   FFT.DCRemoval();
-//   FFT.Windowing(ext_real, 2*SIGNAL_LENGTH, FFT_WIN_TYP_HAMMING, FFT_FORWARD);	/* Weigh data */
-//   FFT.Compute(ext_real, imag, 2*SIGNAL_LENGTH, FFT_FORWARD); /* Compute FFT */
-
-//   // multtiply each element of the fft by the appropriate twiddle factor
-//   for(int k = 0; ) 
-// }
 
 
 
 // Function that reads analog values and stores them in a signal
-// void listen(double s[]){
-//   int i = 0;
-//   // wait for the user to speak
-//   while(digitalRead(PIN_LISTEN) ){Serial.println("waitng for input....");}
-//   Serial.println("Listening....");
-//   delay(100);
-//   // when the user speaks
-//   while(!digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
-//     // analogRead returns a uint16_t so we need to cast it to sample
-//     double sample = (double) analogRead(PIN_MIC);
-//     s[i] =  sample;
-//     Serial.println(sample);
-//     i++;
-//     delayMicroseconds(120);
-//   }
-// }
+void listen(double s[]){
+  int i = 0;
+  // wait for the user to speak
+  while(digitalRead(PIN_LISTEN) ){Serial.println("waitng for input....");}
+  Serial.println("Listening....");
+  delay(100);
+  // when the user speaks
+  while(!digitalRead(PIN_LISTEN) && i < SIGNAL_LENGTH){
+    // analogRead returns a uint16_t so we need to cast it to sample
+    double sample = (double) analogRead(PIN_MIC);
+    s[i] =  sample;
+    Serial.println(sample);
+    i++;
+    delayMicroseconds(120);
+  }
+}
 
 
 /* if a vector v = <v0, v1, v2, ...>

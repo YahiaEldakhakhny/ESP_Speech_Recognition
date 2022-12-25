@@ -1,54 +1,31 @@
 #include <arduinoFFT.h>
 
-// General purpose defines
-#define HIGH 1
-#define LOW 0
+
 // Defines related to the signals
 #define SIGNAL_LENGTH 8192 // Must be a power of 2 so I chose 2^13
-#define NUMBER_OF_SIGNALS 6
-// Indicies to get real and imaginary components of a signal
-#define REAL 0
-#define IMAG 1
+
 // Defines of Pins
 // TODO: change pins to be suitable for hardware connections
 #define PIN_MODE_TRAIN 12
 #define PIN_MODE_RECOGNIZE 14
 #define PIN_LISTEN 25 // pin used to tell esp to start listening
 #define PIN_MIC 34 // pin connected to mic, used to read analog values
-#define PIN_TRAIN_WORD1 19
-#define PIN_TRAIN_WORD2 18
-#define PIN_TRAIN_WORD3 5
-typedef double Sample;
-typedef double* RI_Vector;// Real or Imaginary vector
-typedef RI_Vector* Signal;// A signal consists of 2 RI_Signal (one real and the other imaginary)
+
 
 // Array to store all signals
-Signal all_signals[NUMBER_OF_SIGNALS];
+double ref_signal[SIGNAL_LENGTH];
 
 // Create fft object from fft library
 arduinoFFT FFT = arduinoFFT();
 
-int x = 2;
-int y = 23;
-int curr_filtered = 0;
-int prev_filtered = 0;
-int curr_input    = 0;
-int prev_input    = 0;
 void setup()
 {
 
   pinMode(PIN_MODE_TRAIN, INPUT);
   pinMode(PIN_MODE_RECOGNIZE, INPUT);
   pinMode(PIN_LISTEN, INPUT); 
-  pinMode(PIN_MIC, INPUT);  
-  pinMode(PIN_TRAIN_WORD1, INPUT);
-  pinMode(PIN_TRAIN_WORD2, INPUT);
-  pinMode(PIN_TRAIN_WORD3, INPUT);
+  pinMode(PIN_MIC, INPUT);
   
-  // Allocate memory space for all signals
-  // for(int i=0; i < NUMBER_OF_SIGNALS; i++){
-  //   signal_setup(all_signals[i]);
-  // }
   // Serial monitor setup
   Serial.begin(115200);
   
@@ -58,16 +35,8 @@ void setup()
  
 void loop()
 {
-  Signal currSignal;
-  while(digitalRead(PIN_LISTEN)){Serial.println("Waiting for input...."); delay(500);}
-  if(!digitalRead(PIN_LISTEN)){
-  listen(currSignal);
-  }
-
-  Serial.println("Done listening");  
-
-  for(int i = 0; i < SIGNAL_LENGTH; i++){
-  Serial.println(currSignal[REAL][i]);    
+  while(!digitalRead(PIN_LISTEN)){
+    Serial.println(analogRead(PIN_MIC));
   }
   
 }
